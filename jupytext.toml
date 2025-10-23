@@ -1,0 +1,2 @@
+# jupytext --sync crypto_trading_bot.ipynb
+formats = "ipynb,py:percent"
