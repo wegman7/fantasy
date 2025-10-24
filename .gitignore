@@ -4,3 +4,9 @@ fp_metrics
 fp_season_stats
 .*
 *.ipynb
+
+# Python cache/bytecode
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
