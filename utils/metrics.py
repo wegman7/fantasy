@@ -14,6 +14,7 @@ def compute_summary(df: pd.DataFrame) -> Dict[str, float]:
     out["mae_adp"] = mae(df["adp_error"])
     out["mae_ecr"] = mae(df["ecr_error"])
     out["corr_adp_final"] = df["espn_adp"].corr(df["final_rank"]) if len(df) else float("nan")
+    out["corr_ecr_final"] = df["ecr_rank"].corr(df["final_rank"]) if len(df) else float("nan")
     out["bias_adp"] = df["adp_error"].mean()
     out["bias_ecr"] = df["ecr_error"].mean()
     return out

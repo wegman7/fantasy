@@ -19,3 +19,21 @@ def scatter_adp_vs_final(df: pd.DataFrame, *, title: Optional[str] = None):
     plt.grid(True, alpha=0.2)
     plt.tight_layout()
     plt.show()
+
+
+def scatter_ecr_vs_final(df: pd.DataFrame, *, title: Optional[str] = None):
+    if df.empty:
+        return
+    max_axis = max(df["ecr_rank"].max(), df["final_rank"].max())
+    plt.figure(figsize=(6, 6))
+    plt.scatter(df["ecr_rank"], df["final_rank"], alpha=0.7, color="tab:orange")
+    plt.plot([0, max_axis], [0, max_axis], "r--", linewidth=1)
+    plt.xlabel("ECR Rank (expected)")
+    plt.ylabel("Final Rank (actual)")
+    if title:
+        plt.title(title)
+    else:
+        plt.title("ECR vs Actual Performance")
+    plt.grid(True, alpha=0.2)
+    plt.tight_layout()
+    plt.show()
