@@ -19,6 +19,12 @@
 # using data from fp_adp/, fp_ecr/, and fp_season_stats/.
 
 # %%
+import sys
+project_root = "/Users/challenger/prog/fantasy"   # adjust to your root
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# %%
 from itables import init_notebook_mode, show
 from IPython.display import display
 import pandas as pd
