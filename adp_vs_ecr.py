@@ -14,7 +14,7 @@ init_notebook_mode(all_interactive=True)
 # Parameters
 
 # %%
-year = "2024"
+year = "all"  # "all", a single year like "2024", or a list of years
 scoring = "ppr"  # ppr | half | std
 pos = "all"      # "all" or one of [qb, rb, wr, te] or a list like ["wr","rb"]
 
@@ -22,7 +22,7 @@ pos = "all"      # "all" or one of [qb, rb, wr, te] or a list like ["wr","rb"]
 # Load data
 
 # %%
-from utils.paths import fp_stats_path, fp_adp_path, fp_ecr_path, fp_adp_overall_path
+from utils.paths import fp_stats_path, fp_adp_path, fp_ecr_path, fp_adp_overall_path, available_years
 from utils.loaders import read_csv
 
 def normalize_positions(p):
@@ -34,22 +34,40 @@ def normalize_positions(p):
 
 positions = normalize_positions(pos)
 
-ecr_path = fp_ecr_path(year, scoring)
-df_ecr_raw = read_csv(ecr_path)
+# Resolve years to load
+def normalize_years(y):
+    if isinstance(y, str):
+        if y.lower() == "all":
+            # Use years available for WR (as proxy) and filter to 2015+
+            yrs = available_years(scoring, "wr")
+            return sorted([yy for yy in yrs if int(yy) >= 2015])
+        return [y]
+    return [str(x) for x in y]
 
-if len(positions) == 1:
-    stats_path = fp_stats_path(year, scoring, positions[0])
-    adp_path = fp_adp_path(year, scoring, positions[0])
-    df_stats_raw = read_csv(stats_path)
-    df_adp_raw = read_csv(adp_path)
-else:
-    stats_list = []
-    for p in positions:
-        sp = fp_stats_path(year, scoring, p)
-        stats_list.append(read_csv(sp).assign(pos=p))
-    df_stats_raw = pd.concat(stats_list, ignore_index=True)
-    # Use overall ADP (ovr) when analyzing multiple positions
-    df_adp_raw = read_csv(fp_adp_overall_path(year, scoring))
+years = normalize_years(year)
+
+stats_frames = []
+adp_frames = []
+ecr_frames = []
+
+for y in years:
+    if len(positions) == 1:
+        stats_frames.append(read_csv(fp_stats_path(y, scoring, positions[0])).assign(year=y))
+        adp_frames.append(read_csv(fp_adp_path(y, scoring, positions[0])).assign(year=y))
+    else:
+        # union stats across positions for each year
+        per_year_stats = []
+        for p in positions:
+            per_year_stats.append(read_csv(fp_stats_path(y, scoring, p)).assign(pos=p, year=y))
+        stats_frames.append(pd.concat(per_year_stats, ignore_index=True))
+        # overall ADP for that year
+        adp_frames.append(read_csv(fp_adp_overall_path(y, scoring)).assign(year=y))
+    # ECR for that year
+    ecr_frames.append(read_csv(fp_ecr_path(y, scoring)).assign(year=y))
+
+df_stats_raw = pd.concat(stats_frames, ignore_index=True)
+df_adp_raw = pd.concat(adp_frames, ignore_index=True)
+df_ecr_raw = pd.concat(ecr_frames, ignore_index=True)
 
 display(df_stats_raw.head(3))
 display(df_adp_raw.head(3))
@@ -65,13 +83,21 @@ if len(positions) == 1:
     df_stats = clean_stats(df_stats_raw)
     df_adp = clean_adp(df_adp_raw)
 else:
-    # Compute overall final ranks across all positions
-    df_stats = clean_stats_overall(df_stats_raw)
+    # Compute overall final ranks across all positions, per year if multi-year
+    if len(years) > 1:
+        df_stats = (
+            df_stats_raw.groupby("year", group_keys=False).apply(clean_stats_overall)
+        )
+        df_stats["year"] = df_stats["year"].astype(str)
+    else:
+        df_stats = clean_stats_overall(df_stats_raw)
+        df_stats["year"] = years[0]
     # ADP overall already loaded; clean
     df_adp = clean_adp(df_adp_raw)
 
-df_stats = df_stats.drop_duplicates(subset=["player_name"])  # safety
-df_adp = df_adp.drop_duplicates(subset=["player_name"])      # safety
+subset_cols = ["player_name", "year"] if "year" in df_stats.columns else ["player_name"]
+df_stats = df_stats.drop_duplicates(subset=subset_cols)
+df_adp = df_adp.drop_duplicates(subset=subset_cols)
 df_ecr = clean_ecr(df_ecr_raw)
 
 display(df_stats.head(3))
@@ -111,10 +137,11 @@ show(biggest_busts(df_all, 20))
 from utils.plotting import scatter_adp_vs_final, scatter_ecr_vs_final
 
 pos_label = ("ALL" if len(positions) > 1 else positions[0].upper())
-title_adp = f"ADP vs Final Rank — {year.upper()} {scoring.upper()} {pos_label}"
+years_label = ("ALL" if len(years) > 1 else years[0])
+title_adp = f"ADP vs Final Rank — {years_label} {scoring.upper()} {pos_label}"
 scatter_adp_vs_final(df_all, title=title_adp)
 
-title_ecr = f"ECR vs Final Rank — {year.upper()} {scoring.upper()} {pos_label}"
+title_ecr = f"ECR vs Final Rank — {years_label} {scoring.upper()} {pos_label}"
 scatter_ecr_vs_final(df_all, title=title_ecr)
 
 # %% [markdown]

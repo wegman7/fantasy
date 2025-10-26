@@ -32,7 +32,10 @@ def clean_stats(df: pd.DataFrame) -> pd.DataFrame:
         else:
             raise KeyError("Could not find rank column in stats dataframe")
 
-    out = df[[player_col, rank_col]].rename(columns={player_col: "player_name", rank_col: "final_rank"})
+    cols = [player_col, rank_col]
+    if "year" in df.columns:
+        cols.append("year")
+    out = df[cols].rename(columns={player_col: "player_name", rank_col: "final_rank"})
     return out
 
 
@@ -90,7 +93,10 @@ def clean_stats_overall(df: pd.DataFrame) -> pd.DataFrame:
         pts = pd.to_numeric(df[pts_col], errors="coerce").fillna(0)
         # Rank descending by points; method='first' ensures deterministic order
         ranks = pts.rank(ascending=False, method="first").astype(int)
-        out = df[[player_col]].copy()
+        cols = [player_col]
+        if "year" in df.columns:
+            cols.append("year")
+        out = df[cols].copy()
         out["final_rank"] = ranks.values
         out = out.sort_values("final_rank", kind="mergesort")
         out = out.rename(columns={player_col: "player_name"})
@@ -99,14 +105,20 @@ def clean_stats_overall(df: pd.DataFrame) -> pd.DataFrame:
     # fallback to existing rank column if available
     if "Unnamed: 0_level_0_Rank" in df.columns:
         rank_series = pd.to_numeric(df["Unnamed: 0_level_0_Rank"], errors="coerce")
-        out = df[[player_col]].copy()
+        cols = [player_col]
+        if "year" in df.columns:
+            cols.append("year")
+        out = df[cols].copy()
         out["final_rank"] = rank_series
         out = out.sort_values("final_rank", kind="mergesort")
         out = out.rename(columns={player_col: "player_name"})
         return out
 
     # last resort: alphabetical rank
-    out = df[[player_col]].copy()
+    cols = [player_col]
+    if "year" in df.columns:
+        cols.append("year")
+    out = df[cols].copy()
     out = out.rename(columns={player_col: "player_name"})
     out = out.sort_values("player_name", kind="mergesort")
     out["final_rank"] = pd.RangeIndex(1, len(out) + 1)
@@ -146,7 +158,10 @@ def clean_adp(df: pd.DataFrame) -> pd.DataFrame:
         else:
             raise KeyError("Could not find ADP column in ADP dataframe")
 
-    out = df[[player_col, adp_col]].rename(columns={player_col: "player_name", adp_col: "espn_adp"})
+    cols = [player_col, adp_col]
+    if "year" in df.columns:
+        cols.append("year")
+    out = df[cols].rename(columns={player_col: "player_name", adp_col: "espn_adp"})
     out = out[out["espn_adp"].notna()]
     return out
 
@@ -179,5 +194,8 @@ def clean_ecr(df: pd.DataFrame) -> pd.DataFrame:
         else:
             raise KeyError("Could not find rank column in ECR dataframe")
 
-    out = df[[player_col, rank_col]].rename(columns={player_col: "player_name", rank_col: "ecr_rank"})
+    cols = [player_col, rank_col]
+    if "year" in df.columns:
+        cols.append("year")
+    out = df[cols].rename(columns={player_col: "player_name", rank_col: "ecr_rank"})
     return out
